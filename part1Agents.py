@@ -142,14 +142,34 @@ class WizardBFS(WizardSearchAgent):
         return state.wizard_loc == state.portal_loc
 
     def next_search_expansion(self) -> GameState | None:
-        # TODO: YOUR CODE HERE
-        raise NotImplementedError
+        if len(self.search_stack) == 0:
+            return None
+        # oldest element gets removed, (first in first out)
+        current_state = self.search_stack.pop(0)
+        if self.is_goal(current_state):
+            reversed_path = self.paths[current_state].copy()
+            reversed_path.reverse()
+            self.plan = reversed_path
+            return None
+        else:
+            return self.search_to_game(current_state)
 
     def process_search_expansion(
         self, source: GameState, target: GameState, action: WizardMoves
     ) -> None:
-        # TODO: YOUR CODE HERE
-        raise NotImplementedError
+        src_state = self.game_to_search(source)
+        tgt_state = self.game_to_search(target)
+
+        if tgt_state in self.paths:
+            return
+        else:
+            # first in, first out, insert new states at the end
+            self.search_stack.append(tgt_state)
+
+            self.paths[tgt_state] = self.paths[src_state].copy()
+            self.paths[tgt_state].append(action)
+            return
+
 
 
 class WizardAstar(WizardSearchAgent):
