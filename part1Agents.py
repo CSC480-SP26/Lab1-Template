@@ -61,14 +61,39 @@ class WizardDFS(WizardSearchAgent):
         return state.wizard_loc == state.portal_loc
 
     def next_search_expansion(self) -> GameState | None:
-        # TODO: YOUR CODE HERE
-        raise NotImplementedError
+        # search_stack is empty, nowhere to expand
+        if len(self.search_stack) == 0:
+            return None
+
+        current_state = self.search_stack.pop()
+        if self.is_goal(current_state):
+            # copy path of current_state, reverse since react() uses 'pop'
+            reversed_path = self.paths[current_state].copy()
+            reversed_path.reverse()
+            self.plan = reversed_path
+            return None
+        else:
+            # not goal, return the game state
+            return self.search_to_game(current_state)
 
     def process_search_expansion(
         self, source: GameState, target: GameState, action: WizardMoves
     ) -> None:
-        # TODO: YOUR CODE HERE
-        raise NotImplementedError
+        # convert GameState's into SearchState's so can calculate
+        src_state = self.game_to_search(source)
+        tgt_state = self.game_to_search(target)
+
+        if tgt_state in self.paths:
+            # the target has already been visited
+            return None
+        else:
+            # add tgt_state to the search_stack
+            self.search_stack.append(tgt_state)
+
+            # update paths[tgt_state] = path to source + new action
+            self.paths[tgt_state] = self.paths[src_state].copy()
+            self.paths[tgt_state].append(action)
+            return
 
 
 class WizardBFS(WizardSearchAgent):
@@ -209,6 +234,11 @@ class CrystalSearchWizard(WizardSearchAgent):
 
 
 class SuboptimalCrystalSearchWizard(CrystalSearchWizard):
+    # added this because would not run
+    @dataclass(eq=True, frozen=True, order=True)
+    class SearchState:
+        wizard_loc: Location
+        portal_loc: Location
 
     def heuristic(self, target: SearchState) -> float:
         # TODO YOUR CODE HERE
