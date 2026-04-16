@@ -146,12 +146,15 @@ class WizardBFS(WizardSearchAgent):
             return None
         # oldest element gets removed, (first in first out)
         current_state = self.search_stack.pop(0)
+
         if self.is_goal(current_state):
+            # copy and reverse, so react() will pop it in order
             reversed_path = self.paths[current_state].copy()
             reversed_path.reverse()
             self.plan = reversed_path
             return None
         else:
+            # not goal, return the game state
             return self.search_to_game(current_state)
 
     def process_search_expansion(
@@ -161,11 +164,13 @@ class WizardBFS(WizardSearchAgent):
         tgt_state = self.game_to_search(target)
 
         if tgt_state in self.paths:
+            # target already visited
             return
         else:
             # first in, first out, insert new states at the end
             self.search_stack.append(tgt_state)
 
+            # update paths[tgt_state] = path to source + new action
             self.paths[tgt_state] = self.paths[src_state].copy()
             self.paths[tgt_state].append(action)
             return
@@ -221,18 +226,57 @@ class WizardAstar(WizardSearchAgent):
         return 1
 
     def heuristic(self, target: GameState) -> float:
-        # TODO: YOUR CODE HERE
-        raise NotImplementedError
+        cur_state = self.game_to_search(target)
+        # return calculated manhanttan distance
+        return (abs(cur_state.wizard_loc.col - cur_state.portal_loc.col) +
+                abs(cur_state.wizard_loc.row - cur_state.portal_loc.row))
 
     def next_search_expansion(self) -> GameState | None:
-        # TODO: YOUR CODE HERE
-        raise NotImplementedError
+        # return none if there is nothing in search_pq
+        if len(self.search_pq) == 0:
+            return None
+        # unpack the least cost state
+        priority, cur_state = heapq.heappop(self.search_pq)
+
+        if self.is_goal(cur_state):
+            # if is the goal, get path
+            cur_cost, cur_path = self.paths[cur_state]
+            reversed_path = cur_path.copy()
+            reversed_path.reverse()
+            # update plan
+            self.plan = reversed_path
+            return None
+        else:
+            # not goal, return the current state to find its possibilities
+            return self.search_to_game(cur_state)
 
     def process_search_expansion(
         self, source: GameState, target: GameState, action: WizardMoves
     ) -> None:
-        # TODO: YOUR CODE HERE
-        raise NotImplementedError
+        # convert to SearchState
+        src_state = self.game_to_search(source)
+        tgt_state = self.game_to_search(target)
+
+        # source's best known cost and path
+        src_cost, src_path = self.paths[src_state]
+
+        # new_cost = cost to source + cost of this move (1)
+        new_cost = src_cost + self.cost(source, target, action)
+
+        # build new path
+        new_path = src_path.copy()
+        new_path.append(action)
+
+        # only keep this path if target unvisited OR new route is cheaper than old
+        if tgt_state not in self.paths or new_cost < self.paths[tgt_state][0]:
+            # update path[tgt_state] to be the new tuple
+            self.paths[tgt_state] = (new_cost, new_path)
+
+            # calculate new priority for the priorithy queue
+            priority = new_cost + self.heuristic(target)
+            # add new route to target to the priority queue
+            heapq.heappush(self.search_pq, (priority, tgt_state))
+
 
 
 class CrystalSearchWizard(WizardSearchAgent):
@@ -254,11 +298,12 @@ class CrystalSearchWizard(WizardSearchAgent):
 
 
 class SuboptimalCrystalSearchWizard(CrystalSearchWizard):
-    # added this because would not run
+    # Change this later
     @dataclass(eq=True, frozen=True, order=True)
     class SearchState:
         wizard_loc: Location
         portal_loc: Location
+        # more stuff...?
 
     def heuristic(self, target: SearchState) -> float:
         # TODO YOUR CODE HERE
