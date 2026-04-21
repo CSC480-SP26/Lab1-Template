@@ -119,23 +119,90 @@ class WizardAlphaBeta(ReasoningWizard):
     max_depth: int = 2
 
     def evaluation(self, state: GameState) -> float:
-        # TODO YOUR CODE HERE
-        raise NotImplementedError
+        # if Wizard dead, return -100 (really bad score, should avoid)
+        if len(state.get_all_entity_locations(Wizard)) == 0:
+            return -100
+
+        wiz = state.get_all_entity_locations(Wizard)[0]
+        portal = state.get_all_tile_locations(Portal)[0]
+
+        # if Wizard gets to portal, return 300 (really GOOD score, prefer!)
+        if wiz == portal:
+            return 300
+
+        p_dist = abs(wiz.col - portal.col) + abs(wiz.row - portal.row)
+        goblins = state.get_all_entity_locations(Goblin)
+
+        # initially set closest_g_dist to a big number
+        closest_g_dist = 100000
+        for goblin in goblins:
+            g_dist = abs(wiz.col - goblin.col) + abs(wiz.row - goblin.row)
+            # if this goblin closer to the wizard than previous goblin, update
+            if g_dist < closest_g_dist:
+                closest_g_dist = g_dist
+
+        # heuristic = manhattan(closest goblin - wizard) - manhattan(wizard - portal)
+        return closest_g_dist - p_dist
 
     def is_terminal(self, state: GameState) -> bool:
-        # TODO YOUR CODE HERE
-        raise NotImplementedError
+        return (len(state.get_all_entity_locations(Wizard)) == 0 or
+                (state.get_all_entity_locations(Wizard)[0] ==
+                 state.get_all_tile_locations(Portal)[0]))
 
     def react(self, state: GameState) -> WizardMoves:
-        # TODO YOUR CODE HERE
-        raise NotImplementedError
+        alpha = -math.inf
+        beta = math.inf
+
+        values: dict[WizardMoves, float] = {}
+        successors = self.get_successors(state)
+        successors = sorted(successors, key=lambda pair: self.evaluation(pair[1]), reverse=True)
+
+        for (action, succ_state) in successors:
+            values[action] = self.alpha_beta_minimax(succ_state, self.max_depth - 1, alpha, beta)
+            alpha = max(alpha, values[action])
 
 
-    def alpha_beta_minimax(self, state: GameState, depth: int):
-        # TODO YOUR CODE HERE
-        raise NotImplementedError
+        return max(values, key=values.get)
 
 
+
+    def alpha_beta_minimax(self, state: GameState, depth: int, alpha: float, beta: float):
+        if self.is_terminal(state) or depth == 0:
+            return self.evaluation(state)
+
+        successors = self.get_successors(state)
+        current_ent = state.get_active_entity()
+        val = None
+
+        if isinstance(current_ent, Wizard):
+            # Wizard Maximizer - starts comparing to -infinity
+            val = -(math.inf)
+            successors = sorted(successors, key=lambda pair: self.evaluation(pair[1]), reverse=True)
+
+            for (action, succ_state) in successors:
+                val = max(val, self.alpha_beta_minimax(succ_state, depth - 1, alpha, beta))
+                alpha = max(alpha, val)
+
+                # if maximizer's best option >= minimizer's best option, prune
+                # minimizer above will not choose maximizer's branch
+                if alpha >= beta:
+                    break
+
+        elif isinstance(current_ent, Goblin):
+            # Goblin Minimizer - starts comparing to infinity
+            val = math.inf
+            successors = sorted(successors, key=lambda pair: self.evaluation(pair[1]), reverse=False)
+
+            for (action, succ_state) in successors:
+                val = min(val, self.alpha_beta_minimax(succ_state, depth - 1, alpha, beta))
+                beta = min(beta, val)
+
+                # if minimizer's best option <= maximizer's best option, prune
+                # maximizer above will not choose minimizer's branch anyway
+                if beta <= alpha:
+                    break
+
+        return val
 
 
 class WizardExpectimax(ReasoningWizard):
