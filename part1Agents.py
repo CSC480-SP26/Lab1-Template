@@ -280,7 +280,6 @@ class WizardAstar(WizardSearchAgent):
 
 
 class CrystalSearchWizard(WizardSearchAgent):
-    # TODO: YOUR CODE HERE
     @dataclass(eq=True, frozen=True, order=True)
     class SearchState:
         wizard_loc: Location
@@ -431,13 +430,7 @@ class CrystalSearchWizard(WizardSearchAgent):
 
 
 class SuboptimalCrystalSearchWizard(CrystalSearchWizard):
-    # Change this later
-    @dataclass(eq=True, frozen=True, order=True)
-    class SearchState:
-        wizard_loc: Location
-        portal_loc: Location
-        # more stuff...?
 
-    def heuristic(self, target: SearchState) -> float:
-        # TODO YOUR CODE HERE
-        raise NotImplementedError
+    # reduces node expansions, sacrificing guarantee of optimality
+    def heuristic(self, target: GameState) -> float:
+        return super().heuristic(target) * 1.5
